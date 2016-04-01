@@ -2,19 +2,19 @@
 function theRobot=create_simple_robot(varargin)
 %% creating the links
 
-a1 = 1;
-a2 = 1;
+a1 = 0.8;
+a2 = 0.6;
 %   theta d a alpha
 L(1) = Link([ 0     0   a1  0], 'standard');
 L(2) = Link([ 0     0   a2  0], 'standard');
 
 % mass
-L(1).m = 3;
+L(1).m = 1;
 % center of gravity
 L(1).r = [-0.5 0 0];
 
 link_radius = 0.1 ;
-link_length = 1;
+link_length = 0.5;
 Ix = 1/12 * L(1).m*(3*link_radius.^2+link_length.^2);
 Iy = Ix;
 Iz = L(1).m*link_radius.^2/2;
@@ -27,7 +27,7 @@ L(1).Jm = 0;
 L(1).B = 0;
 
 % mass
-L(2).m = 3;
+L(2).m = 1;
 % center of gravity
 L(2).r = [-0.5 0 0];
 %intertia matrix (around cog)
