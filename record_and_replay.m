@@ -1,5 +1,6 @@
 
 function record_and_replay()
+close all
 % set up a simple robot and a figure that plots it
 robot = create_simple_robot();
 fig = initialize_robot_figure(robot);
@@ -13,38 +14,31 @@ nb_knots = 20;
 nb_data = size(data,2);
 skip = floor(nb_data/nb_knots);
 knots = data(:,1:skip:end);
-% get spline structures for our interpolation points
-ppx1 = spline(knots(3,:),knots(1,:));
-ppx2 = spline(knots(3,:),knots(2,:));
-% get spline structures for first and second derivatives
-ppx1_d = differentiate_spline(ppx1);
-ppx2_d = differentiate_spline(ppx2);
-ppx1_dd = differentiate_spline(ppx1_d);
-ppx2_dd = differentiate_spline(ppx2_d);
-% anonymous function for querying our spline per dimension
-%spl = @(dim, t) spline(knots(3,:),knots(dim,:),t);
-% convenvinece function for getting both coordinates togeather
-reference_pos = @(t) [ppval(ppx1,t);ppval(ppx2,t)];
-reference_vel = @(t) [ppval(ppx1_d,t);ppval(ppx2_d,t)];
-reference_acc = @(t) [ppval(ppx1_dd,t);ppval(ppx2_dd,t)];
-% lets plot that
+ppx = spline(knots(3,:),knots(1:2,:));
+% and get first and second derivative
+ppxd = differentiate_spline(ppx);
+ppxdd = differentiate_spline(ppxd);
+
+% lets plot the reference trajectory
 plot(knots(1,:), knots(2,:), 'b+');
-plot(ppval(ppx1,data(3,:)), ppval(ppx2, data(3,:)),'k-');
+ref_traj = ppval(ppx,data(3,:));
+plot(ref_traj(1,:),ref_traj(2,:),'k-');
+
 % find an initial joint configuration for the start point
 qi = robot.ikine(transl(data(1,1), data(2,1),0.0),[0.2,0.2],[1,1,0,0,0,0]);
 robot.animate(qi);
 
-% lets simulate tracking of the trajectory in the absence of perturbations
+% simulate tracking of the trajectory in the absence of perturbations
 % We will use a cartesian impedance controller to track the motion
 % we need to define stiffness and damping values for our controller
-K = eye(2)*500;
-D = eye(2)*5;
+K = eye(2)*400;
+D = eye(2)*7;
 % start simulation
 dt = 0.005;
 % simulation from same start point
 simulation(qi);
 % simulation from different starting point 
-simulation(qi+0.5*randn(2,1)');
+%simulation(qi,1);
     function simulation(q)
         t = knots(3,1);
         qd = [0,0];
@@ -55,11 +49,15 @@ simulation(qi+0.5*randn(2,1)');
             xd = robot.jacob0(q)*qd';
             xd = xd(1:2);
             % compute our time-dependent refernce trajectory
-            x_ref = reference_pos(t);
-            xd_ref = reference_vel(t);
-            xdd_ref = reference_acc(t);
+            x_ref = ppval(ppx, t);%reference_pos(t);
+            xd_ref = ppval(ppxd, t);%reference_vel(t);
+            xdd_ref = ppval(ppxdd, t);%reference_acc(t);
+            xdd_ref = xdd_ref-0.2*(xd-xd_ref);
             % compute cartesian control
             u_cart = -K*(x-x_ref) - D*(xd-xd_ref);
+            % feedforward term
+            u_cart = u_cart + cart_inertia(robot,q)*xdd_ref + robot.coriolis(q,qd)*qd';
+            
             % compute joint space control
             u_joint = robot.jacob0(q)'*[u_cart;zeros(4,1)];
             % apply control to the robot
@@ -73,14 +71,10 @@ simulation(qi+0.5*randn(2,1)');
             end
             robot.delay = dt;
             robot.animate(q);
-            %pause(dt);
         end
         %close(fig)
     end
-% robot.accel()
-% J = robot.jacob0(qi)
-% robot.accel(positions, velocity, torque)
-end
+
 
 function pp_out = differentiate_spline(pp_in)
 % extract details from piece-wise polynomial by breaking it apart
@@ -89,3 +83,12 @@ function pp_out = differentiate_spline(pp_in)
 pp_out = mkpp(breaks,repmat(k-1:-1:1,d*l,1).*coefs(:,1:k-1),d);
 end
 
+function mx = cart_inertia(robot, q)
+mq = robot.inertia(q);
+J = robot.jacob0(q);
+J = J(1:2,1:2);
+Ji = inv(J);
+mx = Ji'*mq*Ji;
+end
+
+end

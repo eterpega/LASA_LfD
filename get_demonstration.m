@@ -23,7 +23,7 @@ while(~finished)
     pause(0.1);
 end
 % set the return value
-data = X
+data = X;
 return
 
     function ret = button_clicked(h,e)
