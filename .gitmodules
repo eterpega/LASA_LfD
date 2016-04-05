@@ -1,0 +1,3 @@
+[submodule "seds"]
+	path = seds
+	url = ./seds

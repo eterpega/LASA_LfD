@@ -1,5 +1,5 @@
 
-function record_and_replay()
+function ds_learning()
 close all
 % set up a simple robot and a figure that plots it
 robot = create_simple_robot();
@@ -14,27 +14,54 @@ disp('Its convenient to represent the collected data with interpolating polynomi
 nb_knots = 10;
 disp(sprintf('you now see a spline with %d knots in the figure.', nb_knots));
 % fit a spline to the demonstration
-nb_data = size(data,2);
-skip = floor(nb_data/nb_knots);
-knots = data(:,1:skip:end);
-ppx = spline(knots(3,:),knots(1:2,:));
-% and get first and second derivative
-ppxd = differentiate_spline(ppx);
-ppxdd = differentiate_spline(ppxd);
+% nb_data = size(data,2);
+% skip = floor(nb_data/nb_knots);
+% knots = data(:,1:skip:end);
+% ppx = spline(knots(3,:),knots(1:2,:));
+% % and get first and second derivative
+% ppxd = differentiate_spline(ppx);
+% 
+% % lets plot the demonstrated trajectory
+% plot(knots(1,:), knots(2,:), 'b+');
+% Data = [ppval(ppx,linspace(knots(3,1),knots(3,end),1000)); ppval(ppxd, linspace(knots(3,1),knots(3,end),1000))];
 
-% lets plot the demonstrated trajectory
-plot(knots(1,:), knots(2,:), 'b+');
-ref_traj = ppval(ppx,linspace(knots(3,1),knots(3,end),1000));
-plot(ref_traj(1,:),ref_traj(2,:),'k-');
+% A set of options that will be passed to the solver. Please type 
+% 'doc preprocess_demos' in the MATLAB command window to get detailed
+% information about other possible options.
+options.tol_mat_bias = 10^-6; % A very small positive scalar to avoid
+                              % instabilities in Gaussian kernel [default: 10^-15]
+                              
+options.display = 1;          % An option to control whether the algorithm
+                              % displays the output of each iterations [default: true]
+                              
+options.tol_stopping=10^-10;  % A small positive scalar defining the stoppping
+                              % tolerance for the optimization solver [default: 10^-10]
 
+options.max_iter = 500;       % Maximum number of iteration for the solver [default: i_max=1000]
+
+options.objective = 'mse';    % 'likelihood': use likelihood as criterion to
+                              % optimize parameters of GMM
+                              % 'mse': use mean square error as criterion to
+                              % optimize parameters of GMM
+                              % 'direction': minimize the angle between the
+                              % estimations and demonstrations (the velocity part)
+                              % to optimize parameters of GMM                              
+                              % [default: 'mse']
+[x0 , xT, Data, index] = preprocess_demos({data(1:2,:)},{data(3,:)},1e-3); %preprocessing datas                              
+[Priors_0, Mu_0, Sigma_0] = initialize_SEDS(Data,1); %finding an initial guess for GMM's parameter
+[Priors Mu Sigma]=SEDS_Solver(Priors_0,Mu_0,Sigma_0,Data,options); %running SEDS optimization solver
+
+target = data(1:2,end);
+ds = @(x) GMR(Priors,Mu,Sigma,x-repmat(target, 1, size(x,2)),1:2,3:4);
+plot_ds_model(fig, ds);
 % find an initial joint configuration for the start point
 %qi = robot.ikine(transl(knots(1,1), knots(2,1),0.0),[0.2,0.2],[1,1,0,0,0,0]);
-qi = simple_robot_ikin(knots(1:2,1));
+qi = simple_robot_ikin(data(1:2,1));
 robot.animate(qi);
 % simulate tracking of the trajectory in the absence of perturbations
 % We will use a cartesian impedance controller to track the motion
 % we need to define stiffness and damping values for our controller
-K = eye(2)*500;
+K = eye(2)*00;
 D = eye(2)*8;
 % start simulation
 dt = 0.005;
@@ -59,9 +86,10 @@ while 1
 end
 %simulation(qi,1);
     function simulation(q)
-        t = knots(3,1);
+        t = data(3,1);
         qd = [0,0];
-        x_ref = ppval(ppx, t);
+        x_ref = robot.fkine(q);
+        x_ref = x_ref(1:2,4);
         h = plot(x_ref(1),x_ref(2),'go');
         ht = [];
         while(1)
@@ -73,10 +101,11 @@ end
             %eig(cart_inertia(robot, q))
 
             % compute our time-dependent refernce trajectory
-            x_ref = ppval(ppx, t);%reference_pos(t);
-            xd_ref = ppval(ppxd, t);%reference_vel(t);
-            xdd_ref = ppval(ppxdd, t);%reference_acc(t);
-            xdd_ref = xdd_ref-0.2*(xd-xd_ref);
+            %x_ref = x_ref+dt*ds(x_ref);%reference_pos(t);
+            xd_ref = ds(x_ref);%reference_vel(t);
+            x_ref = x_ref+dt*xd_ref;
+            %xdd_ref = ppval(ppxdd, t);%reference_acc(t);
+            xdd_ref = -0.00002*(xd-xd_ref);
             % compute cartesian control
             u_cart = -K*(x-x_ref) - D*(xd-xd_ref);
             % feedforward term
@@ -89,14 +118,14 @@ end
             qd = qd+dt*qdd;
             q = q+qd*dt+qdd/2*dt^2;
             t = t+dt;
-            if (norm(x_ref - knots(1:2,end))<0.01)
+            if (norm(x - data(1:2,end))<0.1)
                 break
             end
             robot.delay = dt;
             robot.animate(q);
             set(h,'XData',x_ref(1));
             set(h,'YData',x_ref(2));
-            ht = [ht, plot(x(1), x(2), 'm.')];
+            ht = [ht, plot(x_ref(1), x_ref(2), 'm.')];
         end
         delete(h);
         delete(ht);

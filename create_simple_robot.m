@@ -45,5 +45,5 @@ end
 
 theRobot = SerialLink(L, 'name', name, ...
     'comment', 'simple two link robot');
-theRobot.plotopt = {'noshadow','nojaxes', 'nowrist','noname','linkcolor',0.7*[1,1,1], 'ortho','noshading','notiles','jointcolor',0.6*[1,1,1]}
+theRobot.plotopt = {'noshadow','nojaxes', 'nowrist','noname','linkcolor',0.7*[1,1,1], 'ortho','noshading','notiles','jointcolor',0.6*[1,1,1]};
 
