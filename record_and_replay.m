@@ -49,7 +49,7 @@ while 1
     disp('Now we imagine the robot starts the task from a different location. click on a departure point in the robot workspace.')
     try
         xs = get_point(fig);
-        qs = simple_robot_ikin(xs);
+        qs = simple_robot_ikin(robot,xs);
         robot.animate(qs)
         disp('The simple time-dependent reference trajectory approach cannot deal with this situation. Press enter to see what happens..')
         pause

@@ -1,5 +1,6 @@
 
 function ds_learning()
+nb_gaussians = 2;
 close all
 % set up a simple robot and a figure that plots it
 robot = create_simple_robot();
@@ -9,7 +10,7 @@ fig = initialize_robot_figure(robot);
 disp('In this exercise you will peroform very simple record and replay of a demonstrated trajectory.')
 disp('You can see the robot in the figure. Give a demonstration of a trajectory in its workspace')
 % get a demonstration
-nb_demo = 1;
+nb_demo = 2;
 nb_knots = 10;
 nb_clean_data_per_demo = 50;
 Data = [];
@@ -33,41 +34,19 @@ end
 target = target/nb_demo;
 plot(Data(1,:)+target(1), Data(2,:)+target(2), 'r.','markersize',20);
 
-
-% fit a spline to the demonstration
-
-% 
-% % lets plot the demonstrated trajectory
-% plot(knots(1,:), knots(2,:), 'b+');
-% Data = [ppval(ppx,linspace(knots(3,1),knots(3,end),1000)); ppval(ppxd, linspace(knots(3,1),knots(3,end),1000))];
-
-% A set of options that will be passed to the solver. Please type 
-% 'doc preprocess_demos' in the MATLAB command window to get detailed
-% information about other possible options.
+% learn SEDS model
 options.tol_mat_bias = 10^-6; % A very small positive scalar to avoid
-                              % instabilities in Gaussian kernel [default: 10^-15]
-                              
+                              % instabilities in Gaussian kernel [default: 10^-1                             
 options.display = 1;          % An option to control whether the algorithm
-                              % displays the output of each iterations [default: true]
-                              
+                              % displays the output of each iterations [default: true]                            
 options.tol_stopping=10^-6;  % A small positive scalar defining the stoppping
                               % tolerance for the optimization solver [default: 10^-10]
-
 options.max_iter = 1000;       % Maximum number of iteration for the solver [default: i_max=1000]
-
 options.objective = 'mse';    % 'likelihood': use likelihood as criterion to
-                              % optimize parameters of GMM
-                              % 'mse': use mean square error as criterion to
-                              % optimize parameters of GMM
-                              % 'direction': minimize the angle between the
-                              % estimations and demonstrations (the velocity part)
-                              % to optimize parameters of GMM                              
-                              % [default: 'mse']
-%[x0 , xT, Data, index] = preprocess_demos(data(1:2,:),data(3,:),1e-3); %preprocessing datas                              
-[Priors_0, Mu_0, Sigma_0] = initialize_SEDS(Data,1); %finding an initial guess for GMM's parameter
+                         
+[Priors_0, Mu_0, Sigma_0] = initialize_SEDS(Data,nb_gaussians); %finding an initial guess for GMM's parameter
 [Priors Mu Sigma]=SEDS_Solver(Priors_0,Mu_0,Sigma_0,Data,options); %running SEDS optimization solver
 
-%target = data(1:2,end);
 ds = @(x) GMR(Priors,Mu,Sigma,x-repmat(target, 1, size(x,2)),1:2,3:4);
 plot_ds_model(fig, ds);
 % find an initial joint configuration for the start point
