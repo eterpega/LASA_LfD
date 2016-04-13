@@ -56,6 +56,6 @@ return
         x = x(1,1:2)';
         x = [x;toc];
         X = [X, x];
-        hp = [hp, plot(x(1),x(2),'r.')];
+        hp = [hp, plot(x(1),x(2),'r.','markersize',20)];
     end
 end

@@ -17,25 +17,26 @@ disp(sprintf('you now see a spline with %d knots in the figure.', nb_knots));
 nb_data = size(data,2);
 skip = floor(nb_data/nb_knots);
 knots = data(:,1:skip:end);
-ppx = spline(knots(3,:),knots(1:2,:));
+ppx = interp1(knots(3,:)',knots(1:2,:)','spline','pp');
 % and get first and second derivative
 ppxd = differentiate_spline(ppx);
 ppxdd = differentiate_spline(ppxd);
 
 % lets plot the demonstrated trajectory
 plot(knots(1,:), knots(2,:), 'b+');
-ref_traj = ppval(ppx,linspace(knots(3,1),knots(3,end),1000));
+ref_traj = ppval(ppx,linspace(knots(3,1),knots(3,end),1000))';
 plot(ref_traj(1,:),ref_traj(2,:),'k-');
 
 % find an initial joint configuration for the start point
 %qi = robot.ikine(transl(knots(1,1), knots(2,1),0.0),[0.2,0.2],[1,1,0,0,0,0]);
-qi = simple_robot_ikin(knots(1:2,1));
+qi = simple_robot_ikin(robot, knots(1:2,1));
 robot.animate(qi);
 % simulate tracking of the trajectory in the absence of perturbations
 % We will use a cartesian impedance controller to track the motion
 % we need to define stiffness and damping values for our controller
-K = eye(2)*500;
-D = eye(2)*8;
+
+K = eye(2)*1000;
+D = eye(2)*5;
 % start simulation
 dt = 0.005;
 % simulation from same start point
@@ -57,6 +58,7 @@ while 1
         disp('could not find joint space configuration. Please choose another point in the workspace.')
     end
 end
+
 %simulation(qi,1);
     function simulation(q)
         t = knots(3,1);
@@ -76,11 +78,11 @@ end
             x_ref = ppval(ppx, t);%reference_pos(t);
             xd_ref = ppval(ppxd, t);%reference_vel(t);
             xdd_ref = ppval(ppxdd, t);%reference_acc(t);
-            xdd_ref = xdd_ref-0.2*(xd-xd_ref);
+            xdd_ref = xdd_ref-0.5*(xd-xd_ref);
             % compute cartesian control
             u_cart = -K*(x-x_ref) - D*(xd-xd_ref);
             % feedforward term
-            u_cart = u_cart + cart_inertia(robot,q)*xdd_ref + robot.coriolis(q,qd)*qd';
+            u_cart = u_cart + simple_robot_cart_inertia(robot,q)*xdd_ref;
             % compute joint space control
             u_joint = robot.jacob0(q)'*[u_cart;zeros(4,1)];
             % apply control to the robot
@@ -96,44 +98,12 @@ end
             robot.animate(q);
             set(h,'XData',x_ref(1));
             set(h,'YData',x_ref(2));
-            ht = [ht, plot(x(1), x(2), 'm.')];
+            ht = [ht, plot(x(1), x(2), 'm.','markersize',10)];
         end
         delete(h);
         delete(ht);
     end
 
-    function qs = get_other_start()
-        cs = knots(1:2,1)+0.3*[0;1];
-        %         lo_lim = 0; hi_lim = 1.5;
-        %         cs(1) = max(cs(1),lo_lim);
-        %         cs(2) = max(cs(2),lo_lim);
-        %         cs(1) = min(cs(1), hi_lim);
-        %         cs(2) = min(cs(2), hi_lim);
-        qs = robot.ikine(transl(cs(1), cs(2),0.0),qi,[1,1,0,0,0,0])
-    end
-
-    function q = simple_robot_ikin(x)
-        l1 = robot.a(1); l2 = robot.a(2);
-        q2 = atan2(sqrt(1-(x'*x-l1.^2-l2.^2).^2/(2*l1*l2).^2), (x'*x-l1.^2-l2.^2)/(2*l1*l2))
-        q1 = atan2(x(2), x(1)) - atan2(l2*sin(q2), l1+l2*cos(q2));
-        q = [q1, q2];
-    end
-
 end
 
 
-
-function pp_out = differentiate_spline(pp_in)
-% extract details from piece-wise polynomial by breaking it apart
-[breaks,coefs,l,k,d] = unmkpp(pp_in);
-% make the polynomial that describes the derivative
-pp_out = mkpp(breaks,repmat(k-1:-1:1,d*l,1).*coefs(:,1:k-1),d);
-end
-
-function mx = cart_inertia(robot, q)
-mq = robot.inertia(q);
-J = robot.jacob0(q);
-J = J(1:2,1:2);
-Ji = inv(J);
-mx = Ji'*mq*Ji;
-end
