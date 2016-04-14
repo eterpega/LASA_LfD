@@ -55,7 +55,7 @@ qi = simple_robot_ikin(robot,data(1:2,1));
 robot.animate(qi);
 disp('To improve the accuracy, we can use GP-MDS to locally reshape the DS around the demonstrations')
 disp('press enter to continure..')
-
+pause
 
 % get data for learning the reshaping function
 % each demonstration will be converted
@@ -64,7 +64,7 @@ lmds_data = [];
 for i =1:nb_demo
     dsi = 1+(i-1)*nb_clean_data_per_demo; % demonstration start index
     dei = i*nb_clean_data_per_demo; % demonstration end index
-    lmds_data = [lmds_data, generate_lmds_data_2d(Data(1:2,dsi:dei),Data(3:4,dsi:dei),ds(Data(1:2,dsi:dei)))];
+    lmds_data = [lmds_data, generate_lmds_data_2d(Data(1:2,dsi:dei),Data(3:4,dsi:dei),ds(Data(1:2,dsi:dei)),0.1)];
 end
 
 % hyper-parameters for gaussian process
@@ -90,27 +90,18 @@ hs = plot_ds_model(fig, reshaped_ds, target); % and replace them with the reshap
 % variance 
 hv = plot_gp_variance_2d(fig, gp_handle, lmds_data(1:2,:)+repmat(target, 1,size(lmds_data,2)));
 
-
-
-
-
 % simulate tracking of the trajectory in the absence of perturbations
 % start simulation
 dt = 0.005;
 % simulation from same start point
-disp('The robot will be able to perform the task when starting from the same starting location as the demonstration.')
-disp('press enter to continure..')
-pause
-simulation(qi);
+%simulation(qi);
 % simulation from different starting point
 while 1
-    disp('Now we imagine the robot starts the task from a different location. click on a departure point in the robot workspace.')
+    disp('Select a starting point for the simulation...')
     try
         xs = get_point(fig);
         qs = simple_robot_ikin(robot, xs);
         robot.animate(qs)
-        disp('The simple time-dependent reference trajectory approach cannot deal with this situation. Press enter to see what happens..')
-        pause
         simulation(qs);
     catch
         disp('could not find joint space configuration. Please choose another point in the workspace.')
@@ -120,10 +111,6 @@ end
     function simulation(q)
         t = data(3,1);
         qd = [0,0];
-      
-            x = robot.fkine(q);
-            x = x(1:2,4);
-        %h = plot(x_ref(1),x_ref(2),'go');
         ht = [];
         while(1)
             % compute state of end-effector
@@ -133,8 +120,7 @@ end
             xd = xd(1:2);
             
             xd_ref = reshaped_ds(x-target);%reference_vel(t);
-            
-            %x = x + dt*xd_ref;
+            % put lower bound on speed, just to speed up simulation
             th = 1.0;
             if(norm(xd_ref)<th)
                 xd_ref = xd_ref/norm(xd_ref)*th;
@@ -144,7 +130,6 @@ end
             % compute cartesian control
             B = findDampingBasis(xd_ref);
             D = B*[4 0;0 8]*B';
-            %D = 8*eye(2);
             u_cart = - D*(xd-xd_ref);
             % feedforward term
             u_cart = u_cart + simple_robot_cart_inertia(robot,q)*xdd_ref;

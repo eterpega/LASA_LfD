@@ -1,6 +1,12 @@
-function fig = initialize_robot_figure(robot)
+function fig = initialize_robot_figure(robot,varargin)
 
-fig = figure();
+if nargin>1
+    % figure exists and we should activate axes to plot in
+    axes(varargin{1})
+else
+    % create plot in new figure window
+    fig = figure();
+end
 robot.plot([0,0])
 view([0 90])
 hold on

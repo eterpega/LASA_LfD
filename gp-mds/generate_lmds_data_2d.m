@@ -1,10 +1,12 @@
-function [ data ] = generate_lmds_data_2d( demPos,demVel,orgVel )
+function [ data ] = generate_lmds_data_2d( demPos,demVel,orgVel,varargin )
 % A function that computes velocity scaling and rotation by comparing
 % demVel and orgVel at the input points demPos
-
+distance_threshold = 0.3;
+if nargin>3
+    th = varargin{1};
+end
 % first we must get rid of data close to the origin
 % compute columnwise norm
-distance_threshold = 0.3;
 distance_to_origin = sqrt(sum(demPos.*demPos,1));
 inds_to_remove = find(distance_to_origin < distance_threshold);
 demPos(:, inds_to_remove) = [];

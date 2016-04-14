@@ -17,8 +17,8 @@ datacursormode off
 set(fig,'WindowButtonDownFcn',@(h,e)button_clicked(h,e));
 set(fig,'WindowButtonUpFcn',[]);
 set(fig,'WindowButtonMotionFcn',[]);
+set(fig,'Pointer','crosshair');
 
-hp = gobjects(0);
 
 % wait until demonstration is finished
 while(~finished)
@@ -26,7 +26,8 @@ while(~finished)
 end
 % set the return value
 data = X(1,1:2)';
-
+set(fig,'Pointer','arrow');
+return
 
     function ret = button_clicked(h,e)
         if(strcmp(get(gcf,'SelectionType'),'normal'))
@@ -40,7 +41,6 @@ data = X(1,1:2)';
         set(gcf,'WindowButtonMotionFcn',[]);
         set(gcf,'WindowButtonUpFcn',[]);
         set(gcf,'WindowButtonDownFcn',[]);
-        delete(hp)
         finished = 1;
     end
 

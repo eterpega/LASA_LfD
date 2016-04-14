@@ -8,15 +8,16 @@ finished = 0;
 figure(fig);
 hold on
 % disable any figure modes
-zoom off 
+zoom off
 rotate3d off
 pan off
-brush off  
-datacursormode off 
+brush off
+datacursormode off
 
 set(fig,'WindowButtonDownFcn',@(h,e)button_clicked(h,e));
 set(fig,'WindowButtonUpFcn',[]);
-set(fig,'WindowButtonMotionFcn',[]);
+set(fig,'WindowButtonMotionFcn');
+set(fig,'Pointer','circle');
 
 hp = gobjects(0);
 
@@ -26,7 +27,10 @@ while(~finished)
 end
 % set the return value
 data = X;
+set(fig,'Pointer','arrow');
 return
+
+   
 
     function ret = button_clicked(h,e)
         if(strcmp(get(gcf,'SelectionType'),'normal'))

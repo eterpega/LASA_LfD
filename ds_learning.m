@@ -1,8 +1,7 @@
-
+%hello
 function ds_learning()
 nb_gaussians = 2;
 close all
-% set up a simple robot and a figure that plots it
 robot = create_simple_robot();
 fig = initialize_robot_figure(robot);
 %fig = figure(1);clf;
