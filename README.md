@@ -94,6 +94,6 @@ In this exeercise, we will explore *local* learning in DS represnetations. We wi
 
 # References
 1. P.I. Corke, “Robotics, Vision & Control”, Springer 2011, ISBN 978-3-642-20143-1
-2. Learning Stable Non-Linear Dynamical Systems with Gaussian Mixture Models. IEEE Transaction on Robotics, vol. 27, num 5, p. 943-957 [link to pdf](http://lasa.epfl.ch/publications/uploadedFiles/Khansari_Billard_TRO2011.pdf)
+2. Khansari Zadeh, S. M. and Billard, A., Learning Stable Non-Linear Dynamical Systems with Gaussian Mixture Models. IEEE Transaction on Robotics, vol. 27, num 5, p. 943-957 [link to pdf](http://lasa.epfl.ch/publications/uploadedFiles/Khansari_Billard_TRO2011.pdf)
 3. Kronander, K., Khansari Zadeh, S. M. and Billard, A. (2015) Incremental Motion Learning with Locally Modulated Dynamical Systems. Robotics and Autonomous Systems, 2015, vol. 70, iss. 1, pp. 52-62. [link to pdf](http://lasa.epfl.ch/publications/uploadedFiles/LMDS_els.pdf)
 
