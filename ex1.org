@@ -3,6 +3,7 @@
 * Introduction to programming by demonstration (Lecture) – 20 minutes
 
 ** Teaching robots to handle uncertainty – fast re-planning of paths
+
 *** Why is simple record and replay not sufficient? (Computer-based exercise) – 10 minutes
 *** Teaching trajectory to a robot without obstacles (Lecture) - 10 minutes	
 ** Hands-on exercise – teaching a robot path of varying complexity (Computer-based exercise) – 20 minutes

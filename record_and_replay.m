@@ -73,7 +73,7 @@ end
             xd = robot.jacob0(q)*qd';
             xd = xd(1:2);
             %eig(cart_inertia(robot, q))
-
+            
             % compute our time-dependent refernce trajectory
             x_ref = ppval(ppx, t);%reference_pos(t);
             xd_ref = ppval(ppxd, t);%reference_vel(t);

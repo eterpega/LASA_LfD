@@ -1,6 +1,6 @@
 %hello
 function ds_learning()
-nb_gaussians = 2;
+
 close all
 robot = create_simple_robot();
 fig = initialize_robot_figure(robot);
@@ -9,7 +9,7 @@ fig = initialize_robot_figure(robot);
 disp('In this exercise you will peroform very simple record and replay of a demonstrated trajectory.')
 disp('You can see the robot in the figure. Give a demonstration of a trajectory in its workspace')
 % get a demonstration
-nb_demo = 2;
+nb_demo = 1;
 nb_knots = 10;
 nb_clean_data_per_demo = 50;
 Data = [];
@@ -42,12 +42,13 @@ options.tol_stopping=10^-6;  % A small positive scalar defining the stoppping
                               % tolerance for the optimization solver [default: 10^-10]
 options.max_iter = 1000;       % Maximum number of iteration for the solver [default: i_max=1000]
 options.objective = 'mse';    % 'likelihood': use likelihood as criterion to
-                         
+
+nb_gaussians = 1;                         
 [Priors_0, Mu_0, Sigma_0] = initialize_SEDS(Data,nb_gaussians); %finding an initial guess for GMM's parameter
 [Priors Mu Sigma]=SEDS_Solver(Priors_0,Mu_0,Sigma_0,Data,options); %running SEDS optimization solver
 
-ds = @(x) GMR(Priors,Mu,Sigma,x-repmat(target, 1, size(x,2)),1:2,3:4);
-plot_ds_model(fig, ds);
+ds = @(x) GMR(Priors,Mu,Sigma,x,1:2,3:4);
+plot_ds_model(fig, ds, target);
 % find an initial joint configuration for the start point
 %qi = robot.ikine(transl(knots(1,1), knots(2,1),0.0),[0.2,0.2],[1,1,0,0,0,0]);
 qi = simple_robot_ikin(robot,data(1:2,1));
@@ -55,20 +56,14 @@ robot.animate(qi);
 % simulate tracking of the trajectory in the absence of perturbations
 % start simulation
 dt = 0.005;
-% simulation from same start point
-disp('The robot will be able to perform the task when starting from the same starting location as the demonstration.')
-disp('press enter to continure..')
-pause
-simulation(qi);
+
 % simulation from different starting point
 while 1
-    disp('Now we imagine the robot starts the task from a different location. click on a departure point in the robot workspace.')
+    disp('Select a starting point for the simulation...')
     try
         xs = get_point(fig);
         qs = simple_robot_ikin(robot, xs);
         robot.animate(qs)
-        disp('The simple time-dependent reference trajectory approach cannot deal with this situation. Press enter to see what happens..')
-        pause
         simulation(qs);
     catch
         disp('could not find joint space configuration. Please choose another point in the workspace.')
@@ -89,7 +84,7 @@ end
             xd = robot.jacob0(q)*qd';
             xd = xd(1:2);
           
-            xd_ref = ds(x);%reference_vel(t);
+            xd_ref = ds(x-target);%reference_vel(t);
             th = 1.0;
             if(norm(xd_ref)<th)
                 xd_ref = xd_ref/norm(xd_ref)*th;
