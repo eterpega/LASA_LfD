@@ -64,7 +64,7 @@ lmds_data = [];
 for i =1:nb_demo
     dsi = 1+(i-1)*nb_clean_data_per_demo; % demonstration start index
     dei = i*nb_clean_data_per_demo; % demonstration end index
-    lmds_data = [lmds_data, generate_lmds_data_2d(Data(1:2,dsi:dei),Data(3:4,dsi:dei),ds(Data(1:2,dsi:dei)),0.1)];
+    lmds_data = [lmds_data, generate_lmds_data_2d(Data(1:2,dsi:dei),Data(3:4,dsi:dei),ds(Data(1:2,dsi:dei)),0.05)];
 end
 
 % hyper-parameters for gaussian process

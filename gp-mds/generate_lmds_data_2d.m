@@ -3,7 +3,7 @@ function [ data ] = generate_lmds_data_2d( demPos,demVel,orgVel,varargin )
 % demVel and orgVel at the input points demPos
 distance_threshold = 0.3;
 if nargin>3
-    th = varargin{1};
+    distance_threshold = varargin{1};
 end
 % first we must get rid of data close to the origin
 % compute columnwise norm
