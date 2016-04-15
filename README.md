@@ -5,6 +5,7 @@ These exercises cover mainly representation and learning at the trajectory level
 
 These exercises use a simple two-link robot with dynamics from [Peter Corkes's robotics toolbox](http://petercorke.com/Robotics_Toolbox.html)[1]. 
 
+To make sure everything runs smoothly, we recommend disabling your regular matlab path for these exercises. You can set everything yp automatically by simply running the `setup_lfd_tutorial.m` script. 
 
 # Exercise 1
 The promise of Learning from Demonstration is to reduce the task of programming the robot to simply showing it what it should do. Perhaps the simplest possible way to achieve something like that is to simply record a trajectory and have the robot try to "play it back" exactly.
