@@ -13,7 +13,7 @@ The promise of Learning from Demonstration is to reduce the task of programming 
 We encourage you to adjust any parameters you find, and rerun the function to understand the effect on the behavior of the robot. 
 
 ### Step 1
-There are numerous ways in which we can give demonstrations to a robot. Since we will be working with planar task-spaces in these exercises, we can simply draw trajectories on the robot's task space. First, open the file `record_and_replay.m` and run it in matlab. A figure with the two-link robot as well as a dashed line delimiting its workspace is drawn. You are asked to provide a demonstration of a trajectory.
+There are numerous ways in which we can give demonstrations to a robot. Since we will be working with planar task-spaces in these exercises, we can simply draw trajectories on the robot's task space. First, open the file `exercise_1.m` and run it in matlab. A figure with the two-link robot as well as a dashed line delimiting its workspace is drawn. You are asked to provide a demonstration of a trajectory.
 
 Keep in mind that you are providing a demonstration in *the workspace of the robot*, and hence if any part of the demonstration lies outside the boundary the robot will not be able to play it back. 
 
@@ -58,7 +58,7 @@ In the previous exercise, we saw an example of a very basic record and replay ap
 A large body of work in LfD has been devoted to finding alternative means of representing demonstrated trajectories, so that the robot can *generalize* the demonstrations to new situations (e.g. new starting points). Many of these methods have been mentioned in the tutorial session. Here, we will focus on Dynamical Systems (DS) representations of a task. Specifically, we will use time-invariant DS representations. The methods used in this exercise is Stable Estimator of Dynamical Systems, SEDS [2].
 
 ### Step 1
-Open the file `ds_learning.m` and run it. Again, you will see the two-link robot appearing in a figure with a workspace limit shown by a dashed line. Start by again giving a demonstration of a path in the robot workspace.
+Open the file `exercise_2.m` and run it. Again, you will see the two-link robot appearing in a figure with a workspace limit shown by a dashed line. Start by again giving a demonstration of a path in the robot workspace.
 
 ### Step 2
 The source code starts with collection of a demonstration and processing of the demonstration to find velocity etc using splines, just as in Exercise 1. Scroll down until you find the following code:
@@ -100,7 +100,7 @@ SEDS is a global method, in the sense that it tries to generalize the demonstrat
 In this exercise, we will explore *local* learning in DS representations. We will use SEDS as a global baseline model, and then we will *reshape* it locally in order to improve accuracy near the demonstrations. We will use the method described in [3].
 
 ### Step 1
-Open the file `exercise3.m` and run it. Again, you will see the two-link robot appearing in a figure with a workspace limit shown by a dashed line. Start by giving a demonstration of a path in the robot workspace. First, we have to learn the Baseline SEDS model that will later be refined locally around the demonstration. If you inspect the code in matlab you will recognize most of it from exercise 2. 
+Open the file `exercise_3.m` and run it. Again, you will see the two-link robot appearing in a figure with a workspace limit shown by a dashed line. Start by giving a demonstration of a path in the robot workspace. First, we have to learn the Baseline SEDS model that will later be refined locally around the demonstration. If you inspect the code in matlab you will recognize most of it from exercise 2. 
 
 ### Step 2
 Give demonstration(s) just like in exercise 2. The SEDS optimizer will run and display the resulting SEDS model, which is global but with limited accuracy. Press enter in order to apply local reshaping. You will see a red shade appearing near the demonstrations, and the streamlines aligning much better with the demonstrations than before. 
