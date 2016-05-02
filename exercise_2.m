@@ -1,8 +1,19 @@
 
-function mod_ds_learning()
-nb_gaussians = 1;
+function exercise_2()
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%% open parameters %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+options.objective = 'likelihood';    % 'mse'
+nb_gaussians = 2;
+nb_demo = 2;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 close all
-% set up a simple robot and a figure that plots it
 robot = create_simple_robot();
 fig = initialize_robot_figure(robot);
 %fig = figure(1);clf;
@@ -10,91 +21,58 @@ fig = initialize_robot_figure(robot);
 disp('In this exercise you will peroform very simple record and replay of a demonstrated trajectory.')
 disp('You can see the robot in the figure. Give a demonstration of a trajectory in its workspace')
 % get a demonstration
-nb_demo = 2;
+
 nb_knots = 10;
 nb_clean_data_per_demo = 50;
 Data = [];
 target = zeros(2,1);
+hpp = [];
 for i=1:nb_demo
-    data = get_demonstration(fig);
+    [data, hp] = get_demonstration(fig,0);
     nb_data = size(data,2);
     skip = floor(nb_data/nb_knots);
     knots = data(:,1:skip:end);
     ppx = spline(knots(3,:),knots(1:2,:));
     % % and get first derivative
     ppxd = differentiate_spline(ppx);
-    tt = linspace(knots(3,1), 0.9*knots(3,end), nb_clean_data_per_demo);
+    tt = linspace(knots(3,1), knots(3,end), nb_clean_data_per_demo);
     pos = ppval(ppx,tt);
     target = target+pos(:,end);
     pos = pos - repmat(pos(:,end), 1, nb_clean_data_per_demo);
-    %pos(:,end)
     vel = ppval(ppxd,tt);
-    %vel(:,end) = zeros(2,1);
+    vel(:,end) = zeros(2,1);
     Data = [Data, [pos;vel]];
+    hpp = [hpp, hp];
 end
+delete(hpp);
 target = target/nb_demo;
 plot(Data(1,:)+target(1), Data(2,:)+target(2), 'r.','markersize',20);
-plot(target(1), target(2),'k.','markersize',50);
 
 % learn SEDS model
 options.tol_mat_bias = 10^-6; % A very small positive scalar to avoid
-                              % instabilities in Gaussian kernel [default: 10^-1                             
+% instabilities in Gaussian kernel [default: 10^-1
 options.display = 1;          % An option to control whether the algorithm
-                              % displays the output of each iterations [default: true]                            
+% displays the output of each iterations [default: true]
 options.tol_stopping=10^-6;  % A small positive scalar defining the stoppping
-                              % tolerance for the optimization solver [default: 10^-10]
+% tolerance for the optimization solver [default: 10^-10]
 options.max_iter = 1000;       % Maximum number of iteration for the solver [default: i_max=1000]
-options.objective = 'mse';    % 'likelihood': use likelihood as criterion to
-                         
+
 [Priors_0, Mu_0, Sigma_0] = initialize_SEDS(Data,nb_gaussians); %finding an initial guess for GMM's parameter
 [Priors Mu Sigma]=SEDS_Solver(Priors_0,Mu_0,Sigma_0,Data,options); %running SEDS optimization solver
-
+% plot locations of resulting gaussians
+for k=1:nb_gaussians
+    plot_gaussian_2d(fig,Mu(1:2,k),Sigma(1:2,1:2,k),target);
+end
+% define the dynamical systems using Gaussian Mixture Regression
 ds = @(x) GMR(Priors,Mu,Sigma,x,1:2,3:4);
-hs = plot_ds_model(fig, ds, target);
+% plot DS streamlines, illustrating motion paths in the position space
+plot_ds_model(fig, ds, target);
+% find an initial joint configuration for the start point
 qi = simple_robot_ikin(robot,data(1:2,1));
 robot.animate(qi);
-disp('To improve the accuracy, we can use GP-MDS to locally reshape the DS around the demonstrations')
-disp('press enter to continure..')
-pause
-
-% get data for learning the reshaping function
-% each demonstration will be converted
-% from series of pos, vel to series of pos, angle, speed_factor
-lmds_data = [];
-for i =1:nb_demo
-    dsi = 1+(i-1)*nb_clean_data_per_demo; % demonstration start index
-    dei = i*nb_clean_data_per_demo; % demonstration end index
-    lmds_data = [lmds_data, generate_lmds_data_2d(Data(1:2,dsi:dei),Data(3:4,dsi:dei),ds(Data(1:2,dsi:dei)),0.05)];
-end
-
-% hyper-parameters for gaussian process
-% these can be learned from data but we will use predetermined values here
-ell = 0.1; % lengthscale. bigger lengthscale => smoother, less precise ds
-sf = 1; % signal variance 
-sn = 0.4; % measurement noise 
-% we pack the hyper paramters in logarithmic form in a structure
-hyp.cov = log([ell; sf]);
-hyp.lik = log(sn);
-% for convenience we create a function handle to gpr with these hyper
-% parameters and with our choice of mean, covaraince and likelihood
-% functions. Refer to gpml documentation for details about this. 
-gp_handle = @(train_in, train_out, query_in) gp(hyp, ...
-    @infExact, {@meanZero},{@covSEiso}, @likGauss, ...
-    train_in, train_out, query_in);
-% we now define our reshaped dynamics
-% go and have a look at gp_mds_2d to see what it does
-reshaped_ds = @(x) gp_mds_2d(ds, gp_handle, lmds_data, x);
-delete(hs); % delete the seds streamlines
-hs = plot_ds_model(fig, reshaped_ds, target); % and replace them with the reshaped ones
-% to understand where the gp has infuence, it is useful to plot its
-% variance 
-hv = plot_gp_variance_2d(fig, gp_handle, lmds_data(1:2,:)+repmat(target, 1,size(lmds_data,2)));
-
 % simulate tracking of the trajectory in the absence of perturbations
 % start simulation
 dt = 0.005;
-% simulation from same start point
-%simulation(qi);
 % simulation from different starting point
 while 1
     disp('Select a starting point for the simulation...')
@@ -109,7 +87,7 @@ while 1
 end
 %simulation(qi,1);
     function simulation(q)
-        t = data(3,1);
+        t = 0;
         qd = [0,0];
         ht = [];
         while(1)
@@ -119,14 +97,13 @@ end
             xd = robot.jacob0(q)*qd';
             xd = xd(1:2);
             
-            xd_ref = reshaped_ds(x-target);%reference_vel(t);
-            % put lower bound on speed, just to speed up simulation
-            th = 1.0;
+            xd_ref = ds(x-target);%reference_vel(t);
+            th = 3.0;
             if(norm(xd_ref)<th)
                 xd_ref = xd_ref/norm(xd_ref)*th;
             end
+            % coorrective acceleration for feedforward control
             xdd_ref = -(xd - xd_ref)/dt*0.5;
-            
             % compute cartesian control
             B = findDampingBasis(xd_ref);
             D = B*[4 0;0 8]*B';
@@ -141,26 +118,25 @@ end
             qd = qd+dt*qdd;
             q = q+qd*dt+qdd/2*dt^2;
             t = t+dt;
-            if (norm(x - target)<0.1)
+            % end simulation if the robot is close to the target
+            if (norm(x - data(1:2,end))<0.1)
                 break
             end
             robot.delay = dt;
             robot.animate(q);
-            
-            ht = [ht, plot(x(1), x(2), 'm.', 'markersize',20)];
+            % put a marker at the actual position of the robot
+            ht = [ht, plot(x(1), x(2), 'm.')];
         end
-      
+        % delete the robot trace from the simulation
         delete(ht);
     end
-
-
 end
 
 function B = findDampingBasis(xd)
- y1 = 1;
- y2 = -xd(1)/xd(2);
- y = [y1;y2];
- B = [xd./norm(xd), y./norm(y)];
+y1 = 1;
+y2 = -xd(1)/xd(2);
+y = [y1;y2];
+B = [xd./norm(xd), y./norm(y)];
 end
 
 

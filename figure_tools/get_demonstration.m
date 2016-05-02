@@ -1,4 +1,12 @@
-function data = get_demonstration(fig)
+function [data, hp] = get_demonstration(fig,varargin)
+
+% option to delete/not delete data aftere finshed demonstration
+delete_trace = 1;
+if (nargin>1)
+    delete_trace = varargin{1};
+end
+    
+
 % to store the data
 X = [];
 % flag for signaling that the demonstration has ended
@@ -51,7 +59,9 @@ return
         set(gcf,'WindowButtonMotionFcn',[]);
         set(gcf,'WindowButtonUpFcn',[]);
         set(gcf,'WindowButtonDownFcn',[]);
-        delete(hp)
+        if(delete_trace)
+            delete(hp);
+        end
         finished = 1;
     end
 

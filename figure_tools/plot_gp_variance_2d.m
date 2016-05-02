@@ -14,5 +14,5 @@ h=pcolor(x_tmp,y_tmp,reshape(ys2,nx,ny));
 set(h,'linestyle','none');
 load whiteCopperColorMap;
 colormap(flipud(cm));
-%colorbar;
+colorbar;
 end

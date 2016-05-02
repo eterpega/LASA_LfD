@@ -1,5 +1,5 @@
 
-function record_and_replay()
+function exercise_1()
 close all
 % set up a simple robot and a figure that plots it
 robot = create_simple_robot();
