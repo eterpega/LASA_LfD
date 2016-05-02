@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Icra-lfd-tutorial by epfl-lasa</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Icra-lfd-tutorial</h1>
+      <h2 class="project-tagline">This repository contains code and information for the computer exercises for the tutorial on Learning from Demonstration at ICRA 2016.</h2>
+      <a href="https://github.com/epfl-lasa/icra-lfd-tutorial" class="btn">View on GitHub</a>
+      <a href="https://github.com/epfl-lasa/icra-lfd-tutorial/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/epfl-lasa/icra-lfd-tutorial/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h1>
+<a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Introduction</h1>
+
+<p>This repository contains code and information for the computer exercises for the tutorial on Learning from Demonstration at ICRA 2016.</p>
+
+<p>These exercises cover mainly representation and learning at the trajectory level, and should not be seen as a comprehensive set of exercises about the huge field of LfD.</p>
+
+<p>These exercises use a simple two-link robot with dynamics from <a href="http://petercorke.com/Robotics_Toolbox.html">Peter Corkes's robotics toolbox</a>[1]. </p>
+
+<p>To make sure everything runs smoothly, we recommend disabling your regular matlab path for these exercises. You can set everything up automatically by simply running the <code>setup_lfd_tutorial.m</code> script. </p>
+
+<h1>
+<a id="exercise-1" class="anchor" href="#exercise-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Exercise 1</h1>
+
+<p>The promise of Learning from Demonstration is to reduce the task of programming the robot to simply showing it what it should do. Perhaps the simplest possible way to achieve something like that is to simply record a trajectory and have the robot try to "play it back" exactly.</p>
+
+<p>We encourage you to adjust any parameters you find, and rerun the function to understand the effect on the behavior of the robot. </p>
+
+<h3>
+<a id="step-1" class="anchor" href="#step-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 1</h3>
+
+<p>There are numerous ways in which we can give demonstrations to a robot. Since we will be working with planar task-spaces in these exercises, we can simply draw trajectories on the robot's task space. First, open the file <code>exercise_1.m</code> and run it in matlab. A figure with the two-link robot as well as a dashed line delimiting its workspace is drawn. You are asked to provide a demonstration of a trajectory.</p>
+
+<p>Keep in mind that you are providing a demonstration in <em>the workspace of the robot</em>, and hence if any part of the demonstration lies outside the boundary the robot will not be able to play it back. </p>
+
+<h3>
+<a id="step-2" class="anchor" href="#step-2" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 2</h3>
+
+<p>Your demonstration consists of a series of x,y coordinates unevenly distributed in time. In order to execute the trajectory with the robot, we need access to at least a velocity profile and preferably also acceleration profile of the trajectory. The get a continuous representation that provides all these data, we can fit a spline representation to our demonstration.</p>
+
+<p>With a spline representation, we don't need to use all of our demonstrated points. We can reduce the data set to a set of knots, which will be used to fit the spline. You can experiment with different number of knots by adjusting the nb_knots parameter in the matlab code. </p>
+
+<div class="highlight highlight-source-matlab"><pre>nb_knots = <span class="pl-c1">10</span>;
+<span class="pl-k">disp</span>(<span class="pl-k">sprintf</span>(<span class="pl-s"><span class="pl-pds">'</span>you now see a spline with <span class="pl-cce">%d</span> knots in the figure.<span class="pl-pds">'</span></span>, nb_knots));
+<span class="pl-c">% fit a spline to the demonstration</span>
+nb_data = <span class="pl-k">size</span>(data,<span class="pl-c1">2</span>);
+skip = <span class="pl-k">floor</span>(nb_data/nb_knots);
+knots = data(:,<span class="pl-c1">1</span>:skip:<span class="pl-k">end</span>);</pre></div>
+
+<p>Cubic splines is one possibility of interpolating the trajectory but there are also many others, feel free to test other methods built in to matlab by changing <code>'spline'</code> the following line of code:</p>
+
+<div class="highlight highlight-source-matlab"><pre>ppx = <span class="pl-k">interp1</span>(knots(<span class="pl-c1">3</span>,:)<span class="pl-k">'</span>,knots(<span class="pl-c1">1</span>:<span class="pl-c1">2</span>,:)<span class="pl-k">'</span>,<span class="pl-s"><span class="pl-pds">'</span>spline<span class="pl-pds">'</span></span>,<span class="pl-s"><span class="pl-pds">'</span>pp<span class="pl-pds">'</span></span>);</pre></div>
+
+<p>Once we have generated the reduced data set we can interpolate it. The result is a series of 3rd degree polynomials which can be easily differentiated to yield the velocity and acceleration profile. </p>
+
+<div class="highlight highlight-source-matlab"><pre><span class="pl-c">% and get first and second derivative</span>
+ppxd = differentiate_spline(ppx);
+ppxdd = differentiate_spline(ppxd);</pre></div>
+
+<h3>
+<a id="step-3" class="anchor" href="#step-3" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 3</h3>
+
+<p>If you have given a demonstration and see the figure with the spline representation of your demonstration, you can press enter to start a simulation. The simulation uses a rather simple Cartesian controller with imperfect dynamic compensation, so it the trajectory may not be followed exactly if you gave a complex/fast demonstration.</p>
+
+<h3>
+<a id="step-4" class="anchor" href="#step-4" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 4</h3>
+
+<p>Now suppose that the robot finds itself in another starting point, and we would like it to execute the task. The problem here is that we have not really demonstrated or encoded a task, but just a time-dependent trajectory. A naive approach of trying to use this trajectory with other starting points will yield bad performance and is potentially unstable and very dangerous behavior. Try it out by clicking at a new location to start a simulation. The program will repeatedly ask you to click at new locations to simulate from that starting point.</p>
+
+<p>At any time, you can abort the program by either rerunning the file or pressing <code>ctrl+c</code> in the matlab console.</p>
+
+<h1>
+<a id="excercise-2" class="anchor" href="#excercise-2" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Excercise 2</h1>
+
+<p>In the previous exercise, we saw an example of a very basic record and replay approach which as we have seen is prone to error if the slightest thing in the environment changes between demonstration and execution.</p>
+
+<p>A large body of work in LfD has been devoted to finding alternative means of representing demonstrated trajectories, so that the robot can <em>generalize</em> the demonstrations to new situations (e.g. new starting points). Many of these methods have been mentioned in the tutorial session. Here, we will focus on Dynamical Systems (DS) representations of a task. Specifically, we will use time-invariant DS representations. The methods used in this exercise is Stable Estimator of Dynamical Systems, SEDS [2].</p>
+
+<h3>
+<a id="step-1-1" class="anchor" href="#step-1-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 1</h3>
+
+<p>Open the file <code>exercise_2.m</code> and run it. Again, you will see the two-link robot appearing in a figure with a workspace limit shown by a dashed line. Start by again giving a demonstration of a path in the robot workspace.</p>
+
+<h3>
+<a id="step-2-1" class="anchor" href="#step-2-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 2</h3>
+
+<p>The source code starts with collection of a demonstration and processing of the demonstration to find velocity etc using splines, just as in Exercise 1. Scroll down until you find the following code:</p>
+
+<div class="highlight highlight-source-matlab"><pre>[Priors_0, Mu_0, Sigma_0] = initialize_SEDS(<span class="pl-c1">Data</span>,nb_gaussians); <span class="pl-c">%finding an initial guess for GMM's parameter</span>
+[Priors Mu Sigma]=SEDS_Solver(Priors_0,Mu_0,Sigma_0,<span class="pl-c1">Data</span>,options); <span class="pl-c">%running SEDS optimization solver</span></pre></div>
+
+<p>In the first of line of the code above creates a Gaussian Mixture Model(GMR) representing the joint probability density function of the demonstrated position and velocity. By conditioning this distribution, so that we get a distribution of velocity <em>given</em> position, we are getting close to something we can use for control. However, if we just used the first estimate, we would have an <em>unstable</em> model, with diverging trajectories.</p>
+
+<p>The second line of code starts the SEDS optimizer, which modifies the GMM such that it yields a stable DS when conditioned. This is done in a constrained optimization procedure. Depending on the complexity of your demonstration, it is possible that no stable solution can be found, or a solution that does not fit the data well. Rerun the program until the optimization finishes successfully. </p>
+
+<h3>
+<a id="step-3-1" class="anchor" href="#step-3-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 3</h3>
+
+<p>Now that we have a DS model, inspect the behavior by launching simulations from different parts of the workspace by clicking there. As you can see, the robot always follows smooth trajectories that end up at the demonstrated end point.</p>
+
+<h3>
+<a id="step-4-1" class="anchor" href="#step-4-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 4</h3>
+
+<p>So far, we have only given one demonstration. In order to generalize, it is generally good to provide several demonstrations. Find the parameter <code>nb_demo</code> near the top of the main function and change a higher number, e.g. 2 or 3. You can now give several demonstrations. The demonstrations will be translated so that they all end at the same point. Try demonstrating different trajectories in different parts of the workspace. </p>
+
+<h3>
+<a id="step-5" class="anchor" href="#step-5" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 5</h3>
+
+<p>So far, we have used a GMM with a single Gaussian to model the DS. To model more complex data, more Gaussians can be required. Find the parameter <code>nb_gaussians</code> and change it to a higher number, e.g. 2.</p>
+
+<p>Note that it is generally a good idea to keep the number of Gaussians low, as the optimization is more likely to end up in a bad local minima with more Gaussians. It is not always possible to get a very accurate reproduction of the trajectory this way. SEDS should not be seen as a precision tool but rather a method that can capture the general motion pattern and generalize it.</p>
+
+<h3>
+<a id="step-6" class="anchor" href="#step-6" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 6</h3>
+
+<p>Simulate a couple of trajectories by clicking at different starting points. Rerun the program and adjust the parameters to see how it influences the result.</p>
+
+<p>The cost function used in the optimization is very important. So far, you have used the maximum likelihood cost-function, which makes the optimization try to fit the Gaussians so that the resulting GMM represents the demonstrated data with high probability. An alternative cost-function is MSE, which does not care about probabilistic representation of the data but rather tries to minimize the error between observed velocity and model generated velocity (via GMR) at the same locations in the position space. You can change to the MSE cost-function by changing the following line of code near the top of the file:</p>
+
+<div class="highlight highlight-source-matlab"><pre>options.objective = <span class="pl-s"><span class="pl-pds">'</span>mse<span class="pl-pds">'</span></span>;    <span class="pl-c">% 'likelihood'</span></pre></div>
+
+<h1>
+<a id="exercise-3" class="anchor" href="#exercise-3" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Exercise 3</h1>
+
+<p>In Exercise 2 we introduced time-invariant DS as a way of encoding motions, and we explored the SEDS algorithm for learning a DS on a particular form (GMR) from demonstrations.</p>
+
+<p>SEDS is a global method, in the sense that it tries to generalize the demonstrations to any part of the state space. As you have seen in the previous exercise, the result is not always suitable and the cost of generalization is local precision. The demonstrated trajectories were not reproduced to the same level of accuracy as in the time-dependent record-and-replay exercise. Furthermore, increasing model complexity by increasing the number of Gaussians often yields unreliable models. </p>
+
+<p>In this exercise, we will explore <em>local</em> learning in DS representations. We will use SEDS as a global baseline model, and then we will <em>reshape</em> it locally in order to improve accuracy near the demonstrations. We will use the method described in [3].</p>
+
+<h3>
+<a id="step-1-2" class="anchor" href="#step-1-2" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 1</h3>
+
+<p>Open the file <code>exercise_3.m</code> and run it. Again, you will see the two-link robot appearing in a figure with a workspace limit shown by a dashed line. Start by giving a demonstration of a path in the robot workspace. First, we have to learn the Baseline SEDS model that will later be refined locally around the demonstration. If you inspect the code in matlab you will recognize most of it from exercise 2. </p>
+
+<h3>
+<a id="step-2-2" class="anchor" href="#step-2-2" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 2</h3>
+
+<p>Give demonstration(s) just like in exercise 2. The SEDS optimizer will run and display the resulting SEDS model, which is global but with limited accuracy. Press enter in order to apply local reshaping. You will see a red shade appearing near the demonstrations, and the streamlines aligning much better with the demonstrations than before. </p>
+
+<p>In order to reshape the DS, there are three things happening:</p>
+
+<h4>
+<a id="compute-reshaping-data-set" class="anchor" href="#compute-reshaping-data-set" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Compute reshaping data set</h4>
+
+<p>After the SEDS model has been learned, it can be used to predict velocities at the same locations as where we got demonstrations. Hence, for each position where we have a demonstrated velocity, we can compare it with the velocity according to SEDS at that same point. In the 2d case, we can represent the difference by a rotation angle and a speed scaling between these two velocities. This is done in the following block of</p>
+
+<div class="highlight highlight-source-matlab"><pre>lmds_data = [];
+<span class="pl-k">for</span> <span class="pl-k">i</span> =<span class="pl-c1">1</span>:nb_demo
+    dsi = <span class="pl-c1">1</span>+(<span class="pl-k">i</span>-<span class="pl-c1">1</span>)*nb_clean_data_per_demo; <span class="pl-c">% demonstration start index</span>
+    dei = <span class="pl-k">i</span>*nb_clean_data_per_demo; <span class="pl-c">% demonstration end index</span>
+    lmds_data = [lmds_data, generate_lmds_data_2d(<span class="pl-c1">Data</span>(<span class="pl-c1">1</span>:<span class="pl-c1">2</span>,dsi:dei),<span class="pl-c1">Data</span>(<span class="pl-c1">3</span>:<span class="pl-c1">4</span>,dsi:dei),ds(<span class="pl-c1">Data</span>(<span class="pl-c1">1</span>:<span class="pl-c1">2</span>,dsi:dei)),<span class="pl-c1">0.05</span>)];
+<span class="pl-k">end</span></pre></div>
+
+<p>You can open the function generate_lmds_data_2d to see that really all that is done is computing an angle and a speed scaling.</p>
+
+<h4>
+<a id="model-reshaping-parameters-with-gaussian-processes" class="anchor" href="#model-reshaping-parameters-with-gaussian-processes" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Model reshaping parameters with Gaussian Processes</h4>
+
+<p>From the procedure above, we have a data set of positions and corresponding rotation angles and speed scalingss. The rotation angles and speed scalings are called the reshaping parameters. We want to be able to predict reshaping parameters for any position in the workspace. Therefore, we use a Gaussian Process (GP) to model the reshaping parameters over the workspace. We use the gpml toolbox for matlab [4].</p>
+
+<p>Near the top of the file you will find these parameters, which determine the behavior of the GP covariance function:</p>
+
+<div class="highlight highlight-source-matlab"><pre><span class="pl-c">% hyper-parameters for gaussian process</span>
+<span class="pl-c">% these can be learned from data but we will use predetermined values here</span>
+ell = <span class="pl-c1">0.1</span>; <span class="pl-c">% lengthscale. bigger lengthscale =&gt; smoother, less precise ds</span>
+sf = <span class="pl-c1">1</span>; <span class="pl-c">% signal variance </span>
+sn = <span class="pl-c1">0.4</span>; <span class="pl-c">% measurement noise</span></pre></div>
+
+<h4>
+<a id="reshape-the-dynamics" class="anchor" href="#reshape-the-dynamics" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Reshape the dynamics</h4>
+
+<p>Now we have generated a data set and defined a Gaussian Process to define it. The last step is to compute the reshaped DS for any position input. This is done by first computing the SEDS output for the query point, then predicting the reshaping paramters at the query point and lastly applying the reshaping (rotation and scaling) to the SEDS output. The following inline function combines all this:</p>
+
+<div class="highlight highlight-source-matlab"><pre><span class="pl-c">% we now define our reshaped dynamics</span>
+<span class="pl-c">% go and have a look at gp_mds_2d to see what it does</span>
+reshaped_ds = @(x) gp_mds_2d(ds, gp_handle, lmds_data, x);</pre></div>
+
+<h3>
+<a id="step-3-2" class="anchor" href="#step-3-2" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 3</h3>
+
+<p>Now that we have a DS model, inspect the behavior by launching simulations from different parts of the workspace by clicking there. As you can see, the robot always follows smooth trajectories that end up at the demonstrated end point.</p>
+
+<h3>
+<a id="step-4-2" class="anchor" href="#step-4-2" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 4</h3>
+
+<p>As in exercise 2, change the number of demonstrations to see how different behaviors can be learned in different parts of the state-space. You can also experiment to see what happens if conflicting demonstrations are given in the same region. </p>
+
+<h3>
+<a id="step-5-1" class="anchor" href="#step-5-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Step 5</h3>
+
+<p>The hyper-parameters for GPR with gaussian covariance function are the measurement noise <code>s_n</code>, the signal variance <code>s_f</code> and the kernel width (also called lengthscale) <code>ell</code>. You can find these parameters near the top of the file.</p>
+
+<p>Try to doubling or tripling the kernel width. Then try setting it to a smaller value. As you can see, the effect of the lengthscale is very important, and essentially boils down to a trade-off between generalization and accuracy. </p>
+
+<h1>
+<a id="references" class="anchor" href="#references" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>References</h1>
+
+<ol>
+<li>P.I. Corke, Robotics, Vision &amp; Control, Springer 2011, ISBN 978-3-642-20143-1</li>
+<li>Khansari Zadeh, S. M. and Billard, A., Learning Stable Non-Linear Dynamical Systems with Gaussian Mixture Models. IEEE Transaction on Robotics, vol. 27, num 5, p. 943-957 <a href="http://lasa.epfl.ch/publications/uploadedFiles/Khansari_Billard_TRO2011.pdf">link to pdf</a>
+</li>
+<li>Kronander, K., Khansari Zadeh, S. M. and Billard, A. (2015) Incremental Motion Learning with Locally Modulated Dynamical Systems. Robotics and Autonomous Systems, 2015, vol. 70, iss. 1, pp. 52-62. <a href="http://lasa.epfl.ch/publications/uploadedFiles/LMDS_els.pdf">link to pdf</a>
+</li>
+<li>Carl Edward Rasmussen, Gaussian Processes for Machine Learning, The MIT Press, 2006. ISBN 0-262-18253-X</li>
+</ol>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/epfl-lasa/icra-lfd-tutorial">Icra-lfd-tutorial</a> is maintained by <a href="https://github.com/epfl-lasa">epfl-lasa</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
