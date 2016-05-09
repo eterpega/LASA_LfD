@@ -13,14 +13,17 @@ sn = 1; % measurement noise
 
 
 % Optimal control parameters
-tracking_precision_weight = 10; % desired tracking precision 
-theta = -1e2; % risk-sensitive parameter
+                % risk-sensitive parameter -> How uncertainty influences robot control. 
+theta = -10;    % A negative value 'discounts' uncertainty from the overall cost                
+                % more uncertainty -> more compliance
 
-global pertForce;
-global pauseSim;
+%theta = 0;     % Ignores uncertainty: no influence on robot behavior
+                
+%theta = 1e-1;  % A positive value 'increases' overall cost with uncertainty:
+                % more uncertainty -> less compliance
+tracking_precision_weight = 10; % desired position tracking precision
 
-pertForce = [0;0];
-pauseSim = false;
+                
 
 options.objective = 'likelihood';    % 'likelihood'
 nb_gaussians = 1;
@@ -28,6 +31,12 @@ nb_demo = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+global pertForce;
+global pauseSim;
+
+pertForce = [0;0];
+pauseSim = false;
 
 close all
 % set up a simple robot and a figure that plots it
@@ -85,7 +94,6 @@ ds = @(x) GMR(Priors,Mu,Sigma,x,1:2,3:4);
 qi = simple_robot_ikin(robot,data(1:2,1));
 robot.animate(qi);
 disp('To improve the accuracy, we use GP-MDS to locally reshape the DS around the demonstrations')
-%pause
 
 % get data for learning the reshaping function
 % each demonstration will be converted
@@ -117,16 +125,16 @@ hs = plot_ds_model(fig, reshaped_ds, target); % and replace them with the reshap
 hv = plot_gp_variance_2d(fig, gp_handle, lmds_data(1:2,:)+repmat(target, 1,size(lmds_data,2)));
 
 % simulate tracking of the trajectory in the absence of perturbations
+
 % start simulation
 dt = 0.005;
-
-disp('We will now add a stiffness term .')
-
+disp('We will now simulate an open-loop trajectory until the origin and add an optimal tracker on top of our previous controller.')
 
 set(gcf,'KeyPressFcn',@pauseSimulation);
 
 while 1
-    disp('Select a starting point for the simulation...')
+    disp('Select a starting point for the simulation.')
+    disp('You can pause the simulation by pressing the spacebar and perturb the robot with the mouse to get an idea of its compliance.')
     try
         xs = get_point(fig);
         qs = simple_robot_ikin(robot, xs);
@@ -136,10 +144,8 @@ while 1
         [x_des, sigma] = simulate_ds(qs);
         % Compute optimal gains
         [K] = compute_optimal_gains(x_des, sigma);
-        set(gcf,'WindowButtonDownFcn',@startPerturbation);
         % Simulate the resulting open-loop control law
         simulation_opt_control(qs, K, x_des);
-        set(gcf,'WindowButtonDownFcn','');
     catch
         disp('could not find joint space configuration. Please choose another point in the workspace.')
      end
@@ -150,6 +156,10 @@ end
         qd = [0,0];
         ht = [];
         traj_index = 1;
+        
+        % Set perturbations with the mouse
+        set(gcf,'WindowButtonDownFcn',@startPerturbation);
+        
         while(1)
             % compute state of end-effector
             x = robot.fkine(q);
@@ -203,7 +213,7 @@ end
         delete(ht);
     end
 
-    %% Computes open-loop trajectory until the origin
+    %% Computes open-loop trajectory of mean+variances until the origin
     function [xd, sigma] = simulate_ds(q)
         x = robot.fkine(q);
         x = x(1:2,4);
@@ -234,19 +244,21 @@ end
     end
 
     %% Computes optimal tracking control by minimizing cost
-    % J = \sum_{k=1}^{T} (x_k - x_des_k)^T Q_k (x_k - x_des_k) + u_k^T R_k
-    % u_k
+    % J = \sum_{k=1}^{T} (x_k - x_des_k)^T Q (x_k - x_des_k) + u_k^T R u_k
     function [K] = compute_optimal_gains(x_des, sigma)
         time_horizon = length(x_des);
         
+        % Q/R parameters
         Q = diag([tracking_precision_weight tracking_precision_weight ...
                     0 0]);
         R = 1e-5 * eye(2);
 
+        % Quadratic coefficient at time horizon
         W = Q;
         
+        % Ricatti recursion
         for k=time_horizon-1:-1:1
-            % Robot cartesian inertia and damping
+            % Robot cartesian inertia and damping (Approximate around desired trajectory)
             M = simple_robot_cart_inertia(robot,simple_robot_ikin(robot, x_des(:,k)));
             D = zeros(2);
 
@@ -296,7 +308,7 @@ end
             x = get(gca,'Currentpoint');
             x = x(1,1:2)';
             motionData = [motionData, x];
-            pertForce = 10*(motionData(:,end)-motionData(:,1));
+            pertForce = 5*(motionData(:,end)-motionData(:,1));
             ret=1;
             delete(hand2)
             hand2 = plot([motionData(1,1),motionData(1,end)],[motionData(2,1),motionData(2,end)],'-r');
