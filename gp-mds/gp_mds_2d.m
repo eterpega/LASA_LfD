@@ -1,4 +1,4 @@
-function [vel,varargout] = gp_mds_2d(original_dynamics, gp_handle, demonstrated_data, query_pos);
+function [vel,varargout] = gp_mds_2d(original_dynamics, gp_handle, demonstrated_data, query_pos)
 
 [angle_est, var] = feval(gp_handle, demonstrated_data(1:2,:)', demonstrated_data(3,:)', query_pos');
 speed_est = feval(gp_handle, demonstrated_data(1:2,:)', demonstrated_data(4,:)', query_pos');
