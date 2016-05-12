@@ -14,16 +14,16 @@ sn = 1; % measurement noise
 
 % Optimal control parameters
                 % risk-sensitive parameter -> How uncertainty influences robot control. 
-theta = -10;    % A negative value 'discounts' uncertainty from the overall cost                
+theta = -0.05;    % A negative value 'discounts' uncertainty from the overall cost                
                 % more uncertainty -> more compliance
 
 %theta = 0;     % Ignores uncertainty: no influence on robot behavior
                 
 %theta = 1e-1;  % A positive value 'increases' overall cost with uncertainty:
                 % more uncertainty -> less compliance
-tracking_precision_weight = 10; % desired position tracking precision
+tracking_precision_weight = 1e4; % desired position tracking precision
 
-                
+time_horizon = 10;
 
 options.objective = 'likelihood';    % 'likelihood'
 nb_gaussians = 1;
@@ -33,10 +33,8 @@ nb_demo = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 global pertForce;
-global pauseSim;
 
 pertForce = [0;0];
-pauseSim = false;
 
 close all
 % set up a simple robot and a figure that plots it
@@ -130,8 +128,6 @@ hv = plot_gp_variance_2d(fig, gp_handle, lmds_data(1:2,:)+repmat(target, 1,size(
 dt = 0.005;
 disp('We will now simulate an open-loop trajectory until the origin and add an optimal tracker on top of our previous controller.')
 
-set(gcf,'KeyPressFcn',@pauseSimulation);
-
 while 1
     disp('Select a starting point for the simulation.')
     disp('You can pause the simulation by pressing the spacebar and perturb the robot with the mouse to get an idea of its compliance.')
@@ -140,22 +136,16 @@ while 1
         qs = simple_robot_ikin(robot, xs);
         qd = [0,0];
         robot.animate(qs);
-        % Get open loop trajectory from the DS
-        [x_des, sigma] = simulate_ds(qs);
-        % Compute optimal gains
-        [K] = compute_optimal_gains(x_des, sigma);
-        % Simulate the resulting open-loop control law
-        simulation_opt_control(qs, K, x_des);
+        simulation_opt_control(qs);
     catch
         disp('could not find joint space configuration. Please choose another point in the workspace.')
-     end
+    end
 end
 
-    function simulation_opt_control(q, K, x_des)
+    function simulation_opt_control(q)
         t = 0;
         qd = [0,0];
         ht = [];
-        traj_index = 1;
         
         % Set perturbations with the mouse
         set(gcf,'WindowButtonDownFcn',@startPerturbation);
@@ -169,23 +159,23 @@ end
             
             xd_ref = reshaped_ds(x-target);%reference_vel(t);
             % put lower bound on speed, just to speed up simulation
-            th = 5.0;
+            th = 1.0;
             if(norm(xd_ref)<th)
                 xd_ref = xd_ref/norm(xd_ref)*th;
             end
             xdd_ref = -(xd - xd_ref)/dt*0.5;
             
+            % Get open loop trajectory from the DS
+            [x_des, xd_des, sigma] = simulate_ds(x);
+            % Compute optimal gains
+            [K] = compute_optimal_gains(x_des, sigma);
             % compute cartesian control
-            B = findDampingBasis(xd_ref);
-            D = B*[4 0;0 8]*B';
             u_cart = 0;
-            if ~pauseSim
-                u_cart = u_cart - D*(xd-xd_ref);
-                % feedforward term
-                u_cart = u_cart + simple_robot_cart_inertia(robot,q)*xdd_ref;
-            end
-            % add stiffness term
-            u_cart = u_cart - K(:,1:2,traj_index)*(x_des(1:2,traj_index) - x);
+            % feedforward term
+            u_cart = u_cart + simple_robot_cart_inertia(robot,q)*xdd_ref;
+            % optimal damping term
+            K(:,3:4,1)
+            u_cart = u_cart - K(:,3:4,1)*(xd_des(:,1) - xd);
             % external perturbations with the mouse
             u_cart = u_cart + pertForce;
             % compute joint space control
@@ -196,62 +186,49 @@ end
             qd = qd+dt*qdd;
             q = q+qd*dt+qdd/2*dt^2;
             t = t+dt;
-            if (traj_index < length(x_des) && ~pauseSim)
-                traj_index = traj_index + 1;
-            end
             if (norm(x - target)<0.1)
                 break
             end
             robot.delay = dt;
             robot.animate(q);
             
-            if ~pauseSim
-                ht = [ht, plot(x(1), x(2), 'm.', 'markersize',20)];
-            end
+            ht = [ht, plot(x(1), x(2), 'm.', 'markersize',20)];
         end
       
         delete(ht);
     end
 
     %% Computes open-loop trajectory of mean+variances until the origin
-    function [xd, sigma] = simulate_ds(q)
-        x = robot.fkine(q);
-        x = x(1:2,4);
-        xd(:,1) = x;
+    function [xdes, xddes, sigma] = simulate_ds(x)
+        xdes(:,1) = x;
+        xddes(:,1) = reshaped_ds(x-target);
         sigma(:,:,1) = zeros(2);
-        traj_index = 1;
         
-        while(1)
+        for traj_index=1:time_horizon
             % compute state of end-effector
             [x_dot,var] = reshaped_ds(x-target);%reference_vel(t);
             
             % put lower bound on speed, just to speed up simulation
-            th = 5.0;
+            th = 1.0;
             if(norm(x_dot)<th)
                 x_dot = x_dot/norm(x_dot)*th;
             end
             x = x + x_dot*dt;
             
-            xd(:,traj_index) = x;
+            xdes(:,traj_index) = x;
+            xddes(:,traj_index) = x_dot;
             sigma(:,:,traj_index) = var*dt;
-            
-            traj_index = traj_index + 1;
-            
-            if (norm(x - target)<0.1)
-                break
-            end
         end
     end
 
     %% Computes optimal tracking control by minimizing cost
     % J = \sum_{k=1}^{T} (x_k - x_des_k)^T Q (x_k - x_des_k) + u_k^T R u_k
     function [K] = compute_optimal_gains(x_des, sigma)
-        time_horizon = length(x_des);
         
         % Q/R parameters
         Q = diag([tracking_precision_weight tracking_precision_weight ...
-                    0 0]);
-        R = 1e-5 * eye(2);
+                    tracking_precision_weight tracking_precision_weight]);
+        R = 1 * eye(2);
 
         % Quadratic coefficient at time horizon
         W = Q;
@@ -275,17 +252,9 @@ end
             K(:,:,k) = -H\G;
             W = Q + A'*W_risk*A + K(:,:,k)'*H*K(:,:,k) + K(:,:,k)'*G + G'*K(:,:,k);
         end
-     end
-
-    %% Pause/Unpause Simulation with the space key
-    function pauseSimulation(~,e)
-        if strcmp(e.Key,'space');
-            pauseSim = ~pauseSim;
-            qd  = [0,0];
-        end
     end
 
-    %% Perturbation with the mouse
+    %% Perturbations with the mouse
     function startPerturbation(~,~)
         motionData = [];
         set(gcf,'WindowButtonMotionFcn',@perturbationFromMouse);
@@ -308,7 +277,7 @@ end
             x = get(gca,'Currentpoint');
             x = x(1,1:2)';
             motionData = [motionData, x];
-            pertForce = 5*(motionData(:,end)-motionData(:,1));
+            pertForce = 10*(motionData(:,end)-motionData(:,1));
             ret=1;
             delete(hand2)
             hand2 = plot([motionData(1,1),motionData(1,end)],[motionData(2,1),motionData(2,end)],'-r');
@@ -317,14 +286,6 @@ end
         
 
 
-end
-
-
-function B = findDampingBasis(xd)
- y1 = 1;
- y2 = -xd(1)/xd(2);
- y = [y1;y2];
- B = [xd./norm(xd), y./norm(y)];
 end
 
 

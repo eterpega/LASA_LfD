@@ -14,7 +14,7 @@ sn = 0.4; % measurement noise
 
 options.objective = 'likelihood';    % 'likelihood'
 nb_gaussians = 1;
-nb_demo = 2;
+nb_demo = 20;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
