@@ -122,15 +122,11 @@ hs = plot_ds_model(fig, reshaped_ds, target); % and replace them with the reshap
 % variance 
 hv = plot_gp_variance_2d(fig, gp_handle, lmds_data(1:2,:)+repmat(target, 1,size(lmds_data,2)));
 
-% simulate tracking of the trajectory in the absence of perturbations
-
 % start simulation
 dt = 0.005;
-disp('We will now simulate an open-loop trajectory until the origin and add an optimal tracker on top of our previous controller.')
-
 while 1
     disp('Select a starting point for the simulation.')
-    disp('You can pause the simulation by pressing the spacebar and perturb the robot with the mouse to get an idea of its compliance.')
+    disp('Once the simulation starts you can perturb the robot with the mouse to get an idea of its compliance.')
     try
         xs = get_point(fig);
         qs = simple_robot_ikin(robot, xs);
@@ -174,7 +170,6 @@ end
             % feedforward term
             u_cart = u_cart + simple_robot_cart_inertia(robot,q)*xdd_ref;
             % optimal damping term
-            K(:,3:4,1)
             u_cart = u_cart - K(:,3:4,1)*(xd_des(:,1) - xd);
             % external perturbations with the mouse
             u_cart = u_cart + pertForce;
