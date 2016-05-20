@@ -8,19 +8,17 @@ function exercise_4()
 % hyper-parameters for gaussian process
 % these can be learned from data but we will use predetermined values here
 ell = 0.1; % lengthscale. bigger lengthscale => smoother, less precise ds
-sf = 20; % signal variance 
+sf = 10; % signal variance 
 sn = 1; % measurement noise 
 
 
 % Optimal control parameters
                 % risk-sensitive parameter -> How uncertainty influences robot control. 
-theta = -0.05;    % A negative value 'discounts' uncertainty from the overall cost                
+theta = -0.1;    % A negative value 'discounts' uncertainty from the overall cost                
                 % more uncertainty -> more compliance
 
-%theta = 0;     % Ignores uncertainty: no influence on robot behavior
+theta = 0;     % Ignores uncertainty: no influence on robot behavior
                 
-%theta = 1e-1;  % A positive value 'increases' overall cost with uncertainty:
-                % more uncertainty -> less compliance
 tracking_precision_weight = 1e4; % desired position tracking precision
 
 time_horizon = 10;
@@ -221,8 +219,7 @@ end
     function [K] = compute_optimal_gains(x_des, sigma)
         
         % Q/R parameters
-        Q = diag([tracking_precision_weight tracking_precision_weight ...
-                    tracking_precision_weight tracking_precision_weight]);
+        Q = tracking_precision_weight * eye(4);
         R = 1 * eye(2);
 
         % Quadratic coefficient at time horizon
@@ -230,7 +227,7 @@ end
         
         % Ricatti recursion
         for k=time_horizon-1:-1:1
-            % Robot cartesian inertia and damping (Approximate around desired trajectory)
+            % Robot cartesian inertia and damping (Approximate around desired trajectory and discard DS derivatives)
             M = simple_robot_cart_inertia(robot,simple_robot_ikin(robot, x_des(:,k)));
             D = zeros(2);
 

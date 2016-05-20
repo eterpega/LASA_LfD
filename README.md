@@ -152,6 +152,44 @@ The hyper-parameters for GPR with gaussian covariance function are the measureme
 
 Try to doubling or tripling the kernel width. Then try setting it to a smaller value. As you can see, the effect of the lengthscale is very important, and essentially boils down to a trade-off between generalization and accuracy. 
 
+# Exercise 4
+In this exercise we will design a simple variable compliance control law for the robot that takes into account model uncertainty. We will used a similar method to the one described in [2].
+
+### Step 1
+Open the file `exercise_4.m` and run it. Again, you will see the two-link robot appearing in a figure with a workspace limit shown by a dashed line. Start by giving a demonstration of a path in the robot workspace. First, we will learn a LMDS model. Again, if you inspect the code in matlab you will recognize most of it from exercise 3. 
+
+### Step 2
+Once we have a model we can design our controller. If we now have a look at the simulation_opt_control function, it is very similar to the previous exercise simulation function but it has some additional lines
+
+```matlab
+% Get open loop trajectory from the DS
+[x_des, xd_des, sigma] = simulate_ds(x);
+% Compute optimal gains
+[K] = compute_optimal_gains(x_des, sigma);
+```
+First, simulate_ds simulates an open-loop trajectory from the encoded LMDS and returns not only its expected value but also its variance. Second, compute_optimal_gains solves a risk-sensitive optimal regulation problem around the simulated trajectory. Note that this solution is only locally optimal around the simulated trajectory. These two functions are being recomputed on each time step in a Model Predictive Control fashion so the robot will always be around the locallly optimal solutions.  
+
+### Step 3
+We can now inspect the behavior by launching simulations from different parts of the workspace by clicking there. In addition, during the simulation you will now be able to perturb the robot with the mouse to get an idea of the robot's compliance. You should notice that the robot is less compliant in regions with low variance and more compliant in regions with high variance. 
+
+### Step 4
+Around the top of the file you will find parameters related to the optimization
+
+```matlab
+% Optimal control parameters
+                % risk-sensitive parameter -> How uncertainty influences robot control. 
+theta = -0.1;    % A negative value 'discounts' uncertainty from the overall cost                
+                % more uncertainty -> more compliance
+
+%theta = 0;     % Ignores uncertainty: no influence on robot behavior
+                
+tracking_precision_weight = 1e4; % desired position tracking precision
+
+time_horizon = 10;
+```
+
+To observe the effect of the risk-sensitivity parameter, set it to 0 and compare the resulting behavior with the previous runs. In this case we are ingnoring uncertainty and the compliance is not affected by uncertainty.
+
 
 
 # References
@@ -159,3 +197,4 @@ Try to doubling or tripling the kernel width. Then try setting it to a smaller v
 2. Khansari Zadeh, S. M. and Billard, A., Learning Stable Non-Linear Dynamical Systems with Gaussian Mixture Models. IEEE Transaction on Robotics, vol. 27, num 5, p. 943-957 [link to pdf](http://lasa.epfl.ch/publications/uploadedFiles/Khansari_Billard_TRO2011.pdf)
 3. Kronander, K., Khansari Zadeh, S. M. and Billard, A. (2015) Incremental Motion Learning with Locally Modulated Dynamical Systems. Robotics and Autonomous Systems, 2015, vol. 70, iss. 1, pp. 52-62. [link to pdf](http://lasa.epfl.ch/publications/uploadedFiles/LMDS_els.pdf)
 4. Carl Edward Rasmussen, Gaussian Processes for Machine Learning, The MIT Press, 2006. ISBN 0-262-18253-X
+5. Medina, J. R., Lorenz, T., and Hirche, S. (2015). Synthesizing Anticipatory Haptic Assistance Considering Human Behavior Uncertainty. Robotics, IEEE Transactions on, 31(1), 180-190.
